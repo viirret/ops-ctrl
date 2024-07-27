@@ -43,16 +43,17 @@ func main() {
     var command string
 
     switch action {
-    case "start":
-        if len(os.Args) < 4 {
-            fmt.Println("Usage: cli start <service_name> <command>")
-            os.Exit(1)
-        }
-        command = os.Args[3]
-    case "stop":
-        log.fatal("Unimplemented!")
-    case "status":
-        log.fatal("Unimplemented!")
+		case "start":
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: cli start <service_name> <command>")
+				os.Exit(1)
+			}
+			command = os.Args[3]
+		// Stop a service
+		case "stop":
+		command = ""
+		case "status":
+		command = ""
     }
 
     sendRequest(action, name, command)
