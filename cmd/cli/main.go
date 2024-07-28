@@ -34,7 +34,7 @@ func sendRequest(action, name, command string) {
 
 func main() {
     if len(os.Args) < 3 {
-        fmt.Println("Usage: cli <start|stop|status> <service_name> [command]")
+        fmt.Println("Usage: <start|stop|status> <service_name> [command]")
         os.Exit(1)
     }
 
@@ -45,13 +45,16 @@ func main() {
     switch action {
 		case "start":
 			if len(os.Args) < 4 {
-				fmt.Println("Usage: cli start <service_name> <command>")
+				fmt.Println("Usage: start <service_name> <command>")
 				os.Exit(1)
 			}
 			command = os.Args[3]
-		// Stop a service
+
+		// Stop a service.
 		case "stop":
 		command = ""
+
+		// Check service status.
 		case "status":
 		command = ""
     }

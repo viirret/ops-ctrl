@@ -46,5 +46,5 @@ func (m *Manager) ServiceStatus(name string) string {
     if !exists {
         return "unknown"
     }
-    return service.Status()
+    return service.CheckStatus()
 }
