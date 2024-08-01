@@ -2,20 +2,19 @@ package manager
 
 import (
 	"bytes"
-    "log"
-    "os/exec"
-	"time"
+	"fmt"
+	"log"
+	"os/exec"
 	"sync"
-    "fmt"
-    "os"
-    "syscall"
+	"syscall"
+	"time"
 )
 
 type ServiceStatus struct {
 	State string // Current state. States:
 	// running, stopped, error
-	Details []string 	// Additional details or logs
-	Updated time.Time 	// Last update time
+	Details []string  // Additional details or logs
+	Updated time.Time // Last update time
 }
 
 // NewServiceStatus creates a new ServiceStatus with the given state and details
@@ -27,85 +26,168 @@ func NewServiceStatus(state string, details ...string) ServiceStatus {
 	}
 }
 
+type Mode string
+
+const (
+    BinaryArgument Mode = "binary_argument"
+    Name Mode = "name"
+    PID = "pid"
+    Other = "other"
+)
+
+func (m Mode) IsValid() bool {
+    switch m {
+    case BinaryArgument, Name, PID, Other:
+        return true
+    }
+    return false
+}
+
+// NewMode creates a Mode from a string, validating it against known modes
+func NewMode(modeStr string) (Mode, error) {
+    mode := Mode(modeStr)
+    if !mode.IsValid() {
+        return "", fmt.Errorf("invalid mode: %s", modeStr)
+    }
+    return mode, nil
+}
+
+// Process encapsulates the execution logic
+type Process struct {
+	command      string
+	args         []string
+	env          []string
+	workingDir   string
+	cmd          *exec.Cmd
+	outputBuffer *bytes.Buffer
+	mu           sync.Mutex
+}
+
+// NewProcess initializes a new process
+func NewProcess(command string, args []string, env []string, dir string) *Process {
+	return &Process{
+		command:    command,
+		args:       args,
+		env:        env,
+		workingDir: dir,
+	}
+}
+
+// Start initiates the process
+func (p *Process) Start() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Initialize the command
+	p.cmd = exec.Command(p.command, p.args...)
+	p.cmd.Dir = p.workingDir
+	p.cmd.Env = append(p.cmd.Env, p.env...)
+
+	p.outputBuffer = &bytes.Buffer{}
+	p.cmd.Stdout = p.outputBuffer
+	p.cmd.Stderr = p.outputBuffer
+
+	err := p.cmd.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start process: %v", err)
+	}
+
+	return nil
+}
+
+// Stop terminates the process
+func (p *Process) Stop() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.cmd == nil || p.cmd.Process == nil {
+		return fmt.Errorf("process not running")
+	}
+
+	err := p.cmd.Process.Signal(syscall.SIGTERM)
+	if err != nil {
+		return fmt.Errorf("failed to stop process: %v", err)
+	}
+
+	// Wait for process to exit
+	err = p.cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("failed to wait for process termination: %v", err)
+	}
+
+	return nil
+}
+
+// Status returns the current status of the process
+func (p *Process) Status() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.cmd != nil && p.cmd.ProcessState != nil && p.cmd.ProcessState.Exited() {
+		return "stopped"
+	}
+
+	return "running"
+}
+
+// Output returns the output buffer contents
+func (p *Process) Output() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.outputBuffer.String()
+}
+
 type Service struct {
-    Name string 		// Name of the service
-    Command string  	// Command to execute
-    Cmd *exec.Cmd 		// Exec command
-	WorkingDir string 	// Working directory for the command
-	Env	[]string 		// Environment variables
-	OutputBuffer *bytes.Buffer	// Buffer to store command output
-	Status ServiceStatus// Detailed status of the service
-	mu sync.Mutex 		// Mutex to ensure thread safe operation
+	Name         string        // Name of the service
+    Process      *Process      // Encapsulated process
+	Status       ServiceStatus // Detailed status of the service
+    Mode        Mode           // Mode of operation
+}
+
+// NewService initializes a new service
+func NewService(name, command string, args []string, env []string, dir string, modeStr string) (*Service, error) {
+    mode, err := NewMode(modeStr)
+    if err != nil {
+        return nil, err
+    }
+
+    return &Service{
+        Name:    name,
+        Process: NewProcess(command, args, env, dir),
+        Status:  NewServiceStatus("initialized"),
+        Mode:    mode,
+    }, nil
 }
 
 func (s *Service) Start() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.Status.State == "running" {
 		return fmt.Errorf("service %s is already running", s.Name)
 	}
-
-    // Initialize the command with the specified working directory and environment variables
-	s.Cmd = exec.Command("sh", "-c", s.Command)
-	s.Cmd.Dir = s.WorkingDir
-	s.Cmd.Env = append(s.Cmd.Env, s.Env...)
-
-	// Capture standard output and error
-	s.OutputBuffer = &bytes.Buffer{}
-	s.Cmd.Stdout = s.OutputBuffer
-	s.Cmd.Stderr = s.OutputBuffer
-
-    err := s.Cmd.Start()
+    err := s.Process.Start()
 
 	if err != nil {
 		s.Status = NewServiceStatus("error", fmt.Sprintf("failed to start: %v", err))
 		return fmt.Errorf("failed to start service %s: %v", s.Name, err)
 	}
 
-	s.Status = NewServiceStatus("running", fmt.Sprintf("started with PID %d", s.Cmd.Process.Pid))
-	log.Printf("Service %s started with PID %d", s.Name, s.Cmd.Process.Pid)
+	s.Status = NewServiceStatus("running", fmt.Sprintf("started with PID %d", s.Process.cmd.Process.Pid))
+	log.Printf("Service %s started with PID %d", s.Name, s.Process.cmd.Process.Pid)
 	return nil
 }
 
 func (s *Service) Stop() error {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-
-    if s.Cmd == nil || s.Cmd.Process == nil {
-        s.Status = NewServiceStatus("unknown", "process not found")
-        return nil
+    err := s.Process.Stop()
+    if err != nil {
+        s.Status = NewServiceStatus("error", fmt.Sprintf("Failed to stop: %v", err))
+        return err
     }
 
-    err := s.Cmd.Process.Signal(syscall.SIGTERM) // Send SIGTERM first for graceful termination
-	if err != nil {
-		if err.Error() == "os: process already finished" {
-			s.Status = NewServiceStatus("stopped", "process already finished")
-			return nil
-		}
-		return err
-	}
-
-    // Wait for the process to exit
-	exitErr := s.Cmd.Wait()
-	if exitErr != nil {
-		if _, ok := exitErr.(*os.SyscallError); ok {
-			s.Status = NewServiceStatus("stopped", "error waiting for process termination")
-			return exitErr
-		}
-	}
-
-    s.Status = NewServiceStatus("stopped", "process terminated successfully")
+	s.Status = NewServiceStatus("stopped", "process terminated successfully")
 	log.Printf("Service %s stopped", s.Name)
 	return nil
 }
 
 func (s *Service) CheckStatus() string {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-
-    if s.Cmd != nil && s.Cmd.Process != nil && s.Cmd.ProcessState == nil {
-        return "running"
-    }
-    return "stopped"
+    return s.Process.Status()
 }
