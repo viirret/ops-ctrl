@@ -33,14 +33,11 @@ func sendRequest(action, name, command string) {
 }
 
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: <start|stop|status> <service_name> [command]")
+	if len(os.Args) < 2 {
+		fmt.Println("Missing action, type \"help\" for help")
 		os.Exit(1)
 	}
-
 	action := os.Args[1]
-	name := os.Args[2]
-    // cmatrix
 	var command string
 
 	switch action {
@@ -54,11 +51,19 @@ func main() {
 	// Stop a service.
 	case "stop":
 		command = ""
-
 	// Check service status.
 	case "status":
 		command = ""
-	}
+	case "firefox":
+		command = "/usr/bin/firefox"
+	case "help":
+		fmt.Println("Usage: <action> <service_name> <param paramValue>")
+		fmt.Println("Example: start -n uniqueName -b /usr/bin/firefox")
+		fmt.Println("Example: start -a firefox")
+		fmt.Println("Exaple: stop -p 123150")
+		os.Exit(0)
 
+	}
+	name := os.Args[2]
 	sendRequest(action, name, command)
 }

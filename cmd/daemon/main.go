@@ -13,6 +13,14 @@ import (
 
 var mgr = manager.NewManager()
 
+func verifyAction(err error, message string) map[string]string {
+	if err != nil {
+		return map[string]string{"status": "error", "message": err.Error()}
+	} else {
+		return map[string]string{"status": "success", "message": message}
+	}
+}
+
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
@@ -28,27 +36,30 @@ func handleConnection(conn net.Conn) {
 	name := request["name"]
 	command := request["command"]
 
+	workingDir := "/"
+	serviceMode := "binary_argument"
+
 	var response map[string]string
 
 	switch action {
 	case "start":
-		mgr.AddService(name, command)
+		args := []string{""}
+		envs := []string{""}
+		mgr.AddService(name, command, args, envs, workingDir, serviceMode)
 		err := mgr.StartService(name)
-		if err != nil {
-			response = map[string]string{"status": "error", "message": err.Error()}
-		} else {
-			response = map[string]string{"status": "success", "message": "Service started"}
-		}
+		response = verifyAction(err, "Service "+name+" started")
 	case "stop":
 		err := mgr.StopService(name)
-		if err != nil {
-			response = map[string]string{"status": "error", "message": err.Error()}
-		} else {
-			response = map[string]string{"status": "success", "message": "Service stopped"}
-		}
+		response = verifyAction(err, "Service "+name+" stopped")
 	case "status":
 		status := mgr.ServiceStatus(name)
 		response = map[string]string{"status": "success", "message": status}
+	case "firefox":
+		args := []string{"github.com/viirret/ops-ctrl"}
+		envs := []string{"DISPLAY=:0"}
+		mgr.AddService(name, command, args, envs, workingDir, serviceMode)
+		err := mgr.StartService(name)
+		response = verifyAction(err, "Firefox started")
 	default:
 		response = map[string]string{"status": "error", "message": "Unknown action"}
 	}

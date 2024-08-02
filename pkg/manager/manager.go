@@ -1,31 +1,33 @@
 package manager
 
 import (
-	"sync"
 	"fmt"
+	"sync"
+
+	"ops-ctrl/pkg/service"
 )
 
 type Manager struct {
-	services map[string]*Service
+	services map[string]*service.Service
 	mu       sync.Mutex
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		services: make(map[string]*Service),
+		services: make(map[string]*service.Service),
 	}
 }
 
-func (m *Manager) AddService(name, command string) error {
+func (m *Manager) AddService(name, command string, args []string, env []string, workingDir string, serviceMode string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	service, err := NewService(name, command , []string{"exampleargs"}, []string{"exampleenv"}, "/", "binary_argument")
+	service, err := service.NewService(name, command, args, env, workingDir, serviceMode)
 
 	if err != nil {
 		return fmt.Errorf("NewService returns error: %v", err)
-	} 
-    m.services[name] = service
+	}
+	m.services[name] = service
 	return nil
 }
 
