@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"ops-ctrl/pkg/manager"
@@ -33,8 +34,10 @@ func handleConnection(conn net.Conn) {
 	}
 
 	action := request["action"]
-	name := request["name"]
+	id := request["id"]
 	command := request["command"]
+
+	arg0 := request["arg0"]
 
 	workingDir := "/"
 	serviceMode := "binary_argument"
@@ -43,22 +46,23 @@ func handleConnection(conn net.Conn) {
 
 	switch action {
 	case "start":
-		args := []string{""}
-		envs := []string{""}
-		mgr.AddService(name, command, args, envs, workingDir, serviceMode)
-		err := mgr.StartService(name)
-		response = verifyAction(err, "Service "+name+" started")
+		args := []string{arg0}
+		envs := []string{"DISPLAY=:0"}
+		mgr.AddService(id, command, args, envs, workingDir, serviceMode)
+		err := mgr.StartService(id)
+		pid := strconv.Itoa(mgr.GetPID(id))
+		response = verifyAction(err, "Service "+id+" started with pid: "+pid)
 	case "stop":
-		err := mgr.StopService(name)
-		response = verifyAction(err, "Service "+name+" stopped")
+		err := mgr.StopService(id)
+		response = verifyAction(err, "Service "+id+" stopped")
 	case "status":
-		status := mgr.ServiceStatus(name)
+		status := mgr.ServiceStatus(id)
 		response = map[string]string{"status": "success", "message": status}
 	case "firefox":
-		args := []string{"github.com/viirret/ops-ctrl"}
+		args := []string{arg0}
 		envs := []string{"DISPLAY=:0"}
-		mgr.AddService(name, command, args, envs, workingDir, serviceMode)
-		err := mgr.StartService(name)
+		mgr.AddService(id, command, args, envs, workingDir, serviceMode)
+		err := mgr.StartService(id)
 		response = verifyAction(err, "Firefox started")
 	default:
 		response = map[string]string{"status": "error", "message": "Unknown action"}

@@ -39,6 +39,22 @@ func (m Mode) IsValid() bool {
 	return false
 }
 
+func CheckArguments(args []string) map[Mode]string {
+	validArgs := make(map[Mode]string)
+
+	binaryArgument := map[string]bool{
+		"-b":    true,
+		"--bin": true,
+	}
+
+	for i, arg := range args {
+		if binaryArgument[arg] {
+			validArgs[BinaryArgument] = string(arg[i+1])
+		}
+	}
+	return validArgs
+}
+
 // NewMode creates a Mode from a string, validating it against known modes
 func NewMode(modeStr string) (Mode, error) {
 	mode := Mode(modeStr)
@@ -49,21 +65,21 @@ func NewMode(modeStr string) (Mode, error) {
 }
 
 type Service struct {
-	Name    string        // Name of the service
+	ID      string        // ID of the service
 	Process *Process      // Encapsulated process
 	Status  ServiceStatus // Detailed status of the service
 	Mode    Mode          // Mode of operation
 }
 
 // NewService initializes a new service
-func NewService(name, command string, args []string, env []string, dir string, modeStr string) (*Service, error) {
+func NewService(id string, command string, args []string, env []string, dir string, modeStr string) (*Service, error) {
 	mode, err := NewMode(modeStr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Service{
-		Name:    name,
+		ID:      id,
 		Process: NewProcess(command, args, env, dir),
 		Status:  NewServiceStatus("initialized"),
 		Mode:    mode,
@@ -72,17 +88,17 @@ func NewService(name, command string, args []string, env []string, dir string, m
 
 func (s *Service) Start() error {
 	if s.Status.State == "running" {
-		return fmt.Errorf("service %s is already running", s.Name)
+		return fmt.Errorf("service is already running")
 	}
 	err := s.Process.Start()
 
 	if err != nil {
 		s.Status = NewServiceStatus("error", fmt.Sprintf("failed to start: %v", err))
-		return fmt.Errorf("failed to start service %s: %v", s.Name, err)
+		return fmt.Errorf("failed to start service: %v", err)
 	}
 
 	s.Status = NewServiceStatus("running", fmt.Sprintf("started with PID %d", s.Process.cmd.Process.Pid))
-	log.Printf("Service %s started with PID %d", s.Name, s.Process.cmd.Process.Pid)
+	log.Printf("Service started with PID %d", s.Process.cmd.Process.Pid)
 	return nil
 }
 
@@ -94,10 +110,14 @@ func (s *Service) Stop() error {
 	}
 
 	s.Status = NewServiceStatus("stopped", "process terminated successfully")
-	log.Printf("Service %s stopped", s.Name)
+	log.Printf("Service stopped")
 	return nil
 }
 
 func (s *Service) CheckStatus() string {
 	return s.Process.Status()
+}
+
+func (s *Service) GetPID() int {
+	return s.Process.cmd.Process.Pid
 }

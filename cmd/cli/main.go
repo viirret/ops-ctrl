@@ -6,16 +6,18 @@ import (
 	"log"
 	"net"
 	"os"
+
+	"ops-ctrl/pkg/randomidgen"
+	"ops-ctrl/pkg/service"
 )
 
-func sendRequest(action, name, command string) {
+func sendRequest(request map[string]string) {
 	conn, err := net.Dial("unix", "/tmp/ops-ctrl-daemon.sock")
 	if err != nil {
 		log.Fatal("Failed to connect to daemon:", err)
 	}
 	defer conn.Close()
 
-	request := map[string]string{"action": action, "name": name, "command": command}
 	encoder := json.NewEncoder(conn)
 	err = encoder.Encode(request)
 	if err != nil {
@@ -33,37 +35,44 @@ func sendRequest(action, name, command string) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Missing action, type \"help\" for help")
-		os.Exit(1)
-	}
-	action := os.Args[1]
-	var command string
+	first_argument := os.Args[1]
 
-	switch action {
+	switch first_argument {
 	case "start":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: start <service_name> <command>")
-			os.Exit(1)
-		}
-		command = os.Args[3]
+		id := randomidgen.RandomID(10)
+		request := map[string]string{"action": "start", "id": id, "command": os.Args[2]}
+		args := os.Args[3:]
 
-	// Stop a service.
-	case "stop":
-		command = ""
-	// Check service status.
-	case "status":
-		command = ""
+		validArgs := service.CheckArguments(args)
+
+		// Check if there is a binary argument and add it to the request
+		if binaryValue, exists := validArgs[service.BinaryArgument]; exists {
+			request["binary"] = binaryValue
+		}
+
+		for i, arg := range args {
+			key := fmt.Sprintf("arg%d", i)
+			request[key] = arg
+		}
+
+		sendRequest(request)
+
+	//case "stop":
+	//case "status":
 	case "firefox":
-		command = "/usr/bin/firefox"
+		id := randomidgen.RandomID(10)
+		request := map[string]string{"action": "firefox", "id": id, "command": "/usr/bin/firefox"}
+		args := os.Args[2:]
+		for i, arg := range args {
+			key := fmt.Sprintf("arg%d", i)
+			request[key] = arg
+		}
+		sendRequest(request)
 	case "help":
 		fmt.Println("Usage: <action> <service_name> <param paramValue>")
 		fmt.Println("Example: start -n uniqueName -b /usr/bin/firefox")
 		fmt.Println("Example: start -a firefox")
 		fmt.Println("Exaple: stop -p 123150")
 		os.Exit(0)
-
 	}
-	name := os.Args[2]
-	sendRequest(action, name, command)
 }

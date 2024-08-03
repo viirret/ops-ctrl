@@ -18,16 +18,16 @@ func NewManager() *Manager {
 	}
 }
 
-func (m *Manager) AddService(name, command string, args []string, env []string, workingDir string, serviceMode string) error {
+func (m *Manager) AddService(id string, command string, args []string, env []string, workingDir string, serviceMode string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	service, err := service.NewService(name, command, args, env, workingDir, serviceMode)
+	service, err := service.NewService(id, command, args, env, workingDir, serviceMode)
 
 	if err != nil {
 		return fmt.Errorf("NewService returns error: %v", err)
 	}
-	m.services[name] = service
+	m.services[id] = service
 	return nil
 }
 
@@ -59,4 +59,14 @@ func (m *Manager) ServiceStatus(name string) string {
 		return "unknown"
 	}
 	return service.CheckStatus()
+}
+
+func (m *Manager) GetPID(id string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	service, exists := m.services[id]
+	if !exists {
+		return -1
+	}
+	return service.GetPID()
 }
