@@ -12,6 +12,11 @@ import (
 	"ops-ctrl/pkg/manager"
 )
 
+var aliases = map[string]string{
+	"firefox":  "/usr/bin/firefox",
+	"chromium": "/usr/bin/chromium",
+}
+
 var mgr = manager.NewManager()
 
 func verifyAction(err error, message string) map[string]string {
@@ -33,22 +38,44 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
+	// The first argument, "start", "stop", etc.
 	action := request["action"]
-	id := request["id"]
-	command := request["command"]
 
+	// Own identifier
+	id := request["id"]
+
+	// Arguments to the program binary
 	arg0 := request["arg0"]
+	//arg1 := request["arg1"]
+	//arg2 := request["arg2"]
 
 	workingDir := "/"
-	serviceMode := "binary_argument"
-
 	var response map[string]string
 
 	switch action {
 	case "start":
 		args := []string{arg0}
 		envs := []string{"DISPLAY=:0"}
-		mgr.AddService(id, command, args, envs, workingDir, serviceMode)
+
+		binary, binaryExists := request["binary"]
+
+		if binaryExists {
+			log.Println("Binary argument exists!")
+			mgr.AddService(id, binary, args, envs, workingDir)
+		}
+
+		alias, aliasExists := request["alias"]
+
+		if aliasExists {
+			if familiarAlias, familiarAliasesExist := aliases[alias]; familiarAliasesExist {
+				log.Println("Found defined alias:->", familiarAlias)
+			} else {
+				log.Println("Aliases not found for:", alias)
+			}
+			log.Println("Alias argument exists!")
+			mgr.AddService(id, alias, args, envs, workingDir)
+		}
+
 		err := mgr.StartService(id)
 		pid := strconv.Itoa(mgr.GetPID(id))
 		response = verifyAction(err, "Service "+id+" started with pid: "+pid)
@@ -58,12 +85,6 @@ func handleConnection(conn net.Conn) {
 	case "status":
 		status := mgr.ServiceStatus(id)
 		response = map[string]string{"status": "success", "message": status}
-	case "firefox":
-		args := []string{arg0}
-		envs := []string{"DISPLAY=:0"}
-		mgr.AddService(id, command, args, envs, workingDir, serviceMode)
-		err := mgr.StartService(id)
-		response = verifyAction(err, "Firefox started")
 	default:
 		response = map[string]string{"status": "error", "message": "Unknown action"}
 	}

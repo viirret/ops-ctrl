@@ -18,11 +18,12 @@ func NewManager() *Manager {
 	}
 }
 
-func (m *Manager) AddService(id string, command string, args []string, env []string, workingDir string, serviceMode string) error {
+// "start", "stop"
+func (m *Manager) AddService(id string, command string, args []string, env []string, workingDir string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	service, err := service.NewService(id, command, args, env, workingDir, serviceMode)
+	service, err := service.NewService(id, command, args, env, workingDir)
 
 	if err != nil {
 		return fmt.Errorf("NewService returns error: %v", err)

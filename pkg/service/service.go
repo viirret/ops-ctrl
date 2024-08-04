@@ -22,67 +22,18 @@ func NewServiceStatus(state string, details ...string) ServiceStatus {
 	}
 }
 
-type Mode string
-
-const (
-	BinaryArgument Mode = "binary_argument"
-	Name           Mode = "name"
-	PID            Mode = "pid"
-	Other          Mode = "other"
-)
-
-func (m Mode) IsValid() bool {
-	switch m {
-	case BinaryArgument, Name, PID, Other:
-		return true
-	}
-	return false
-}
-
-func CheckArguments(args []string) map[Mode]string {
-	validArgs := make(map[Mode]string)
-
-	binaryArgument := map[string]bool{
-		"-b":    true,
-		"--bin": true,
-	}
-
-	for i, arg := range args {
-		if binaryArgument[arg] {
-			validArgs[BinaryArgument] = string(arg[i+1])
-		}
-	}
-	return validArgs
-}
-
-// NewMode creates a Mode from a string, validating it against known modes
-func NewMode(modeStr string) (Mode, error) {
-	mode := Mode(modeStr)
-	if !mode.IsValid() {
-		return "", fmt.Errorf("invalid mode: %s", modeStr)
-	}
-	return mode, nil
-}
-
 type Service struct {
 	ID      string        // ID of the service
 	Process *Process      // Encapsulated process
 	Status  ServiceStatus // Detailed status of the service
-	Mode    Mode          // Mode of operation
 }
 
 // NewService initializes a new service
-func NewService(id string, command string, args []string, env []string, dir string, modeStr string) (*Service, error) {
-	mode, err := NewMode(modeStr)
-	if err != nil {
-		return nil, err
-	}
-
+func NewService(id string, command string, args []string, env []string, dir string) (*Service, error) {
 	return &Service{
 		ID:      id,
 		Process: NewProcess(command, args, env, dir),
 		Status:  NewServiceStatus("initialized"),
-		Mode:    mode,
 	}, nil
 }
 

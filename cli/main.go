@@ -40,18 +40,33 @@ func main() {
 	switch first_argument {
 	case "start":
 		id := randomidgen.RandomID(10)
-		request := map[string]string{"action": "start", "id": id, "command": os.Args[2]}
-		args := os.Args[3:]
+		request := map[string]string{"action": "start", "id": id}
+		args := os.Args[2:]
+		counter := 0
 
 		validArgs := service.CheckArguments(args)
 
-		// Check if there is a binary argument and add it to the request
-		if binaryValue, exists := validArgs[service.BinaryArgument]; exists {
+		if binaryValue, exists := validArgs[service.Binary]; exists {
+			counter += 2
+			fmt.Println("Binary exists")
 			request["binary"] = binaryValue
 		}
 
-		for i, arg := range args {
+		if aliasValue, exists := validArgs[service.Alias]; exists {
+			counter += 2
+			fmt.Println("Alias exists")
+			request["alias"] = aliasValue
+		}
+
+		if pidValue, exists := validArgs[service.PID]; exists {
+			counter += 2
+			fmt.Println("PID exists")
+			request["pid"] = pidValue
+		}
+
+		for i, arg := range args[counter:] {
 			key := fmt.Sprintf("arg%d", i)
+			log.Println("KEY: ", key, "VALUE: ", arg)
 			request[key] = arg
 		}
 
@@ -59,15 +74,6 @@ func main() {
 
 	//case "stop":
 	//case "status":
-	case "firefox":
-		id := randomidgen.RandomID(10)
-		request := map[string]string{"action": "firefox", "id": id, "command": "/usr/bin/firefox"}
-		args := os.Args[2:]
-		for i, arg := range args {
-			key := fmt.Sprintf("arg%d", i)
-			request[key] = arg
-		}
-		sendRequest(request)
 	case "help":
 		fmt.Println("Usage: <action> <service_name> <param paramValue>")
 		fmt.Println("Example: start -n uniqueName -b /usr/bin/firefox")
