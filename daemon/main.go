@@ -10,13 +10,9 @@ import (
 	"strconv"
 	"syscall"
 
+	"ops-ctrl/pkg/config"
 	"ops-ctrl/pkg/manager"
 )
-
-var aliases = map[string]string{
-	"firefox":  "/usr/bin/firefox",
-	"chromium": "/usr/bin/chromium",
-}
 
 var mgr = manager.NewManager()
 
@@ -78,6 +74,13 @@ func handleConnection(conn net.Conn) {
 		alias, aliasExists := request["alias"]
 
 		if aliasExists {
+			tomlFile := "config.toml"
+			aliases, err := config.LoadAliases(tomlFile)
+
+			if err != nil {
+				log.Fatal("Error loading aliases: ", err)
+			}
+
 			if familiarAlias, familiarAliasesExist := aliases[alias]; familiarAliasesExist {
 				log.Println("Found defined alias:->", familiarAlias)
 				mgr.AddService(id, alias, args, envs, workingDir)
