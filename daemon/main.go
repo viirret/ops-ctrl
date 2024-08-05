@@ -62,28 +62,22 @@ func handleConnection(conn net.Conn) {
 	switch action {
 	case "start":
 		id := request["id"]
-		envs := []string{"DISPLAY=:0"}
 
 		binary, binaryExists := request["binary"]
 
 		if binaryExists {
 			log.Println("Binary argument exists!")
-			mgr.AddService(id, binary, args, envs, workingDir)
+			mgr.AddService(id, binary, args, []string{}, workingDir)
 		}
 
 		alias, aliasExists := request["alias"]
 
 		if aliasExists {
-			tomlFile := "config.toml"
-			aliases, err := config.LoadAliases(tomlFile)
+			cfg := config.GetConfig()
 
-			if err != nil {
-				log.Fatal("Error loading aliases: ", err)
-			}
-
-			if familiarAlias, familiarAliasesExist := aliases[alias]; familiarAliasesExist {
+			if familiarAlias, familiarAliasesExist := cfg.Aliases[alias]; familiarAliasesExist {
 				log.Println("Found defined alias:->", familiarAlias)
-				mgr.AddService(id, alias, args, envs, workingDir)
+				mgr.AddService(id, alias, args, []string{}, workingDir)
 			} else {
 				log.Fatal("Aliases not found for:", alias)
 				return
@@ -153,12 +147,17 @@ func handleConnection(conn net.Conn) {
 }
 
 func main() {
+	tomlFile := "config.toml"
+	config.LoadConfig(tomlFile)
+
 	listener, err := net.Listen("unix", "/tmp/ops-ctrl-daemon.sock")
 	if err != nil {
 		log.Fatal("Failed to listen on socket:", err)
 	}
 	defer listener.Close()
 	log.Println("Service manager daemon started")
+
+	mgr.RunAutostart()
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)

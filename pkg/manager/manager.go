@@ -2,8 +2,11 @@ package manager
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
+	"ops-ctrl/pkg/config"
+	"ops-ctrl/pkg/randomidgen"
 	"ops-ctrl/pkg/service"
 )
 
@@ -15,6 +18,19 @@ type Manager struct {
 func NewManager() *Manager {
 	return &Manager{
 		services: make(map[string]*service.Service),
+	}
+}
+
+func (m *Manager) RunAutostart() {
+	applications := config.GetConfig().Autostart
+
+	for _, app := range applications {
+		id := randomidgen.RandomID(10)
+		m.AddService(id, app, []string{}, []string{}, "/")
+		err := m.StartService(id)
+		if err != nil {
+			log.Fatal("Failed to start service error: ", err)
+		}
 	}
 }
 

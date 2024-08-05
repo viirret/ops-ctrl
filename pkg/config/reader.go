@@ -1,18 +1,30 @@
 package config
 
 import (
+	"log"
+	"sync"
+
 	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	Aliases map[string]string `toml:"aliases"`
+	Aliases   map[string]string `toml:"aliases"`
+	Autostart map[string]string `toml:"autostart"`
 }
 
-// LoadAliases reads the TOML file and returns the aliases map.
-func LoadAliases(filePath string) (map[string]string, error) {
-	var config Config
-	if _, err := toml.DecodeFile(filePath, &config); err != nil {
-		return nil, err
-	}
-	return config.Aliases, nil
+var (
+	config   Config
+	loadOnce sync.Once
+)
+
+func LoadConfig(filePath string) {
+	loadOnce.Do(func() {
+		if _, err := toml.DecodeFile(filePath, &config); err != nil {
+			log.Fatalf("Error loading configuration: %v", err)
+		}
+	})
+}
+
+func GetConfig() Config {
+	return config
 }

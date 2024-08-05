@@ -34,7 +34,6 @@ func CheckArguments(args []string) map[Argument]string {
 		"-i":     true,
 		"-id":    true,
 		"--id":   true,
-		"-n":     true,
 		"--name": true,
 	}
 	handleArguments(args, validArgs, idValues, ID)

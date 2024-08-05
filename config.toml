@@ -1,3 +1,7 @@
 [aliases]
 firefox = "/usr/bin/firefox"
 chromium = "/usr/bin/chromium"
+
+[autostart]
+firefox = "/usr/bin/firefox"
+chromium = "/usr/bin/chromium"
