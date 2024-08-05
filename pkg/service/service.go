@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -54,6 +55,7 @@ func (s *Service) Start() error {
 }
 
 func (s *Service) Stop() error {
+	pid := strconv.Itoa(s.GetPID())
 	err := s.Process.Stop()
 	if err != nil {
 		s.Status = NewServiceStatus("error", fmt.Sprintf("Failed to stop: %v", err))
@@ -61,7 +63,7 @@ func (s *Service) Stop() error {
 	}
 
 	s.Status = NewServiceStatus("stopped", "process terminated successfully")
-	log.Printf("Service stopped")
+	log.Printf("Service " + pid + " stopped")
 	return nil
 }
 

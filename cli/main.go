@@ -36,34 +36,45 @@ func sendRequest(request map[string]string) {
 
 func main() {
 	first_argument := os.Args[1]
+	args := os.Args[2:]
 
 	switch first_argument {
 	case "start":
-		id := randomidgen.RandomID(10)
-		request := map[string]string{"action": "start", "id": id}
-		args := os.Args[2:]
-		counter := 0
+		// Initializing with random id, overwritten if id argument found
+		randomId := randomidgen.RandomID(10)
+		request := map[string]string{"action": "start", "id": randomId}
 
+		counter := 0
 		validArgs := service.CheckArguments(args)
 
-		if binaryValue, exists := validArgs[service.Binary]; exists {
-			counter += 2
-			fmt.Println("Binary exists")
-			request["binary"] = binaryValue
+		for key, value := range validArgs {
+			switch key {
+			// Only one argument allowed, rest of the arguments are
+			// omitted to the binary.
+			case service.Binary:
+				counter += 2
+				fmt.Println("Binary argument exists: ", value)
+				request["binary"] = value
+			case service.ID:
+				counter += 2
+				fmt.Println("ID argument exists: ", value)
+				request["id"] = value
+			case service.Alias:
+				counter += 2
+				fmt.Println("Alias argument exists: ", value)
+				request["alias"] = value
+			case service.PID:
+				counter += 2
+				fmt.Println("PID argument exists: ", value)
+				request["pid"] = value
+			case service.WorkingDir:
+				counter += 2
+				fmt.Print("Workingdir argument exists: ", value)
+				request["working_dir"] = value
+			}
 		}
 
-		if aliasValue, exists := validArgs[service.Alias]; exists {
-			counter += 2
-			fmt.Println("Alias exists")
-			request["alias"] = aliasValue
-		}
-
-		if pidValue, exists := validArgs[service.PID]; exists {
-			counter += 2
-			fmt.Println("PID exists")
-			request["pid"] = pidValue
-		}
-
+		// Start reading through arguments once "command", which is the program, is found.
 		for i, arg := range args[counter:] {
 			key := fmt.Sprintf("arg%d", i)
 			log.Println("KEY: ", key, "VALUE: ", arg)
@@ -72,10 +83,38 @@ func main() {
 
 		sendRequest(request)
 
-	//case "stop":
-	//case "status":
+	case "stop":
+		validArgs := service.CheckArguments(args)
+		request := map[string]string{"action": "stop"}
+
+		for key, value := range validArgs {
+			switch key {
+			case service.PID:
+				fmt.Println("PID argument exists for stop: ", value)
+				request["pid"] = value
+			case service.ID:
+				fmt.Println("ID argument exists for stop: ", value)
+				request["id"] = value
+			}
+		}
+		sendRequest(request)
+	case "status":
+		validArgs := service.CheckArguments(args)
+		request := map[string]string{"action": "status"}
+
+		for key, value := range validArgs {
+			switch key {
+			case service.PID:
+				fmt.Println("PID argument exists for status: ", value)
+				request["pid"] = value
+			case service.ID:
+				fmt.Println("ID argument exists for status: ", value)
+				request["id"] = value
+			}
+		}
+		sendRequest(request)
 	case "help":
-		fmt.Println("Usage: <action> <service_name> <param paramValue>")
+		fmt.Println("Usage: <action> <param paramValue...>")
 		fmt.Println("Example: start -n uniqueName -b /usr/bin/firefox")
 		fmt.Println("Example: start -a firefox")
 		fmt.Println("Exaple: stop -p 123150")

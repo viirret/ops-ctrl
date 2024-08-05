@@ -18,7 +18,6 @@ func NewManager() *Manager {
 	}
 }
 
-// "start", "stop"
 func (m *Manager) AddService(id string, command string, args []string, env []string, workingDir string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -32,34 +31,58 @@ func (m *Manager) AddService(id string, command string, args []string, env []str
 	return nil
 }
 
-func (m *Manager) StartService(name string) error {
+func (m *Manager) StartService(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	service, exists := m.services[name]
+	service, exists := m.services[id]
 	if !exists {
 		return nil
 	}
 	return service.Start()
 }
 
-func (m *Manager) StopService(name string) error {
+func (m *Manager) StopServiceWithID(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	service, exists := m.services[name]
+	service, exists := m.services[id]
 	if !exists {
 		return nil
 	}
 	return service.Stop()
 }
 
-func (m *Manager) ServiceStatus(name string) string {
+func (m *Manager) StopServiceWithPID(pid int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	service, exists := m.services[name]
+
+	for _, service := range m.services {
+		if service.GetPID() == pid {
+			service.Stop()
+		}
+	}
+	return nil
+}
+
+func (m *Manager) ServiceStatusByID(id string) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	service, exists := m.services[id]
 	if !exists {
 		return "unknown"
 	}
 	return service.CheckStatus()
+}
+
+func (m *Manager) ServiceStatusByPID(pid int) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, service := range m.services {
+		if service.GetPID() == pid {
+			return service.CheckStatus()
+		}
+	}
+	return "unknown"
 }
 
 func (m *Manager) GetPID(id string) int {

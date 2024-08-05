@@ -5,16 +5,17 @@ import "fmt"
 type Argument string
 
 const (
-	Binary Argument = "binary"
-	Name   Argument = "name"
-	Alias  Argument = "alias"
-	PID    Argument = "pid"
-	Other  Argument = "other"
+	Binary     Argument = "binary"
+	ID         Argument = "id"
+	Alias      Argument = "alias"
+	PID        Argument = "pid"
+	WorkingDir Argument = "working_dir"
+	Other      Argument = "other"
 )
 
 func (m Argument) IsValid() bool {
 	switch m {
-	case Binary, Name, Alias, PID, Other:
+	case Binary, ID, Alias, PID, WorkingDir, Other:
 		return true
 	}
 	return false
@@ -29,6 +30,15 @@ func CheckArguments(args []string) map[Argument]string {
 	}
 	handleArguments(args, validArgs, binaryValues, Binary)
 
+	idValues := map[string]bool{
+		"-i":     true,
+		"-id":    true,
+		"--id":   true,
+		"-n":     true,
+		"--name": true,
+	}
+	handleArguments(args, validArgs, idValues, ID)
+
 	aliasValues := map[string]bool{
 		"-a":      true,
 		"--alias": true,
@@ -38,8 +48,18 @@ func CheckArguments(args []string) map[Argument]string {
 	pidValues := map[string]bool{
 		"-p":    true,
 		"--pid": true,
+		"-P":    true,
+		"-PID":  true,
+		"--PID": true,
 	}
 	handleArguments(args, validArgs, pidValues, PID)
+
+	workingDirValues := map[string]bool{
+		"-w":            true,
+		"--working_dir": true,
+		"--work_dir":    true,
+	}
+	handleArguments(args, validArgs, workingDirValues, WorkingDir)
 
 	return validArgs
 }
