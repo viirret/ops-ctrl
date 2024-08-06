@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"ops-ctrl/pkg/config"
@@ -38,6 +39,18 @@ func handleConnection(conn net.Conn) {
 	// The first argument, "start", "stop", etc.
 	action := request["action"]
 
+	// Environment variables
+	rawEnv, envOk := request["env"]
+	if !envOk {
+		log.Println("Empty env")
+	}
+	envValues := strings.Split(rawEnv, ",")
+
+	fmt.Println("Command line environment variables")
+	for index, arg := range envValues {
+		fmt.Println("env" + strconv.Itoa(index) + " " + arg)
+	}
+
 	// Arguments to the program binary
 	arg0 := request["arg0"]
 	arg1 := request["arg1"]
@@ -62,12 +75,16 @@ func handleConnection(conn net.Conn) {
 	switch action {
 	case "start":
 		id := request["id"]
+		if id == "" {
+			request["id"] = mgr.RandomID(10)
+			id = request["id"]
+		}
 
 		binary, binaryExists := request["binary"]
 
 		if binaryExists {
 			log.Println("Binary argument exists!")
-			mgr.AddService(id, binary, args, []string{}, workingDir)
+			mgr.AddService(id, binary, args, envValues, workingDir)
 		}
 
 		alias, aliasExists := request["alias"]
@@ -77,7 +94,7 @@ func handleConnection(conn net.Conn) {
 
 			if familiarAlias, familiarAliasesExist := cfg.Aliases[alias]; familiarAliasesExist {
 				log.Println("Found defined alias:->", familiarAlias)
-				mgr.AddService(id, alias, args, []string{}, workingDir)
+				mgr.AddService(id, alias, args, envValues, workingDir)
 			} else {
 				log.Fatal("Aliases not found for:", alias)
 				return

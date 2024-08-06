@@ -3,12 +3,21 @@ package manager
 import (
 	"fmt"
 	"log"
+	"math/rand"
+	"strings"
 	"sync"
+	"time"
 
 	"ops-ctrl/pkg/config"
-	"ops-ctrl/pkg/randomidgen"
 	"ops-ctrl/pkg/service"
 )
+
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+// init seeds the random number generator with the current time.
+func init() {
+	rand.NewSource(time.Now().UnixNano())
+}
 
 type Manager struct {
 	services map[string]*service.Service
@@ -21,11 +30,30 @@ func NewManager() *Manager {
 	}
 }
 
+func (m *Manager) RandomID(length int) string {
+	if length <= 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.Grow(length)
+	for i := 0; i < length; i++ {
+		randomChar := charset[rand.Intn(len(charset))]
+		sb.WriteByte(randomChar)
+	}
+
+	for _, service := range m.services {
+		if service.ID == sb.String() {
+			return m.RandomID(length)
+		}
+	}
+
+	return sb.String()
+}
+
 func (m *Manager) RunAutostart() {
 	applications := config.GetConfig().Autostart
-
 	for _, app := range applications {
-		id := randomidgen.RandomID(10)
+		id := m.RandomID(10)
 		m.AddService(id, app, []string{}, []string{}, "/")
 		err := m.StartService(id)
 		if err != nil {

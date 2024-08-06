@@ -8,6 +8,7 @@ const (
 	Binary     Argument = "binary"
 	ID         Argument = "id"
 	Alias      Argument = "alias"
+	Env        Argument = "env"
 	PID        Argument = "pid"
 	WorkingDir Argument = "working_dir"
 	Other      Argument = "other"
@@ -15,7 +16,7 @@ const (
 
 func (m Argument) IsValid() bool {
 	switch m {
-	case Binary, ID, Alias, PID, WorkingDir, Other:
+	case Binary, ID, Alias, Env, PID, WorkingDir, Other:
 		return true
 	}
 	return false
@@ -43,6 +44,12 @@ func CheckArguments(args []string) map[Argument]string {
 		"--alias": true,
 	}
 	handleArguments(args, validArgs, aliasValues, Alias)
+
+	envValues := map[string]bool{
+		"-e":    true,
+		"--env": true,
+	}
+	handleArguments(args, validArgs, envValues, Env)
 
 	pidValues := map[string]bool{
 		"-p":    true,

@@ -7,11 +7,10 @@ import (
 	"net"
 	"os"
 
-	"ops-ctrl/pkg/randomidgen"
 	"ops-ctrl/pkg/service"
 )
 
-func sendRequest(request map[string]string) {
+func sendRequest(request map[string]interface{}) {
 	conn, err := net.Dial("unix", "/tmp/ops-ctrl-daemon.sock")
 	if err != nil {
 		log.Fatal("Failed to connect to daemon:", err)
@@ -40,38 +39,19 @@ func main() {
 
 	switch first_argument {
 	case "start":
-		// Initializing with random id, overwritten if id argument found
-		randomId := randomidgen.RandomID(10)
-		request := map[string]string{"action": "start", "id": randomId}
+		request := map[string]interface{}{
+			"action": "start",
+			"id":     "",
+			"env":    "",
+		}
 
 		counter := 0
 		validArgs := service.CheckArguments(args)
 
 		for key, value := range validArgs {
-			switch key {
-			// Only one argument allowed, rest of the arguments are
-			// omitted to the binary.
-			case service.Binary:
-				counter += 2
-				fmt.Println("Binary argument exists: ", value)
-				request["binary"] = value
-			case service.ID:
-				counter += 2
-				fmt.Println("ID argument exists: ", value)
-				request["id"] = value
-			case service.Alias:
-				counter += 2
-				fmt.Println("Alias argument exists: ", value)
-				request["alias"] = value
-			case service.PID:
-				counter += 2
-				fmt.Println("PID argument exists: ", value)
-				request["pid"] = value
-			case service.WorkingDir:
-				counter += 2
-				fmt.Print("Workingdir argument exists: ", value)
-				request["working_dir"] = value
-			}
+			fmt.Println("Argument exists: ", key, " value:", value)
+			request[string(key)] = value
+			counter += 2
 		}
 
 		// Start reading through arguments once "command", which is the program, is found.
@@ -85,22 +65,16 @@ func main() {
 
 	case "stop":
 		validArgs := service.CheckArguments(args)
-		request := map[string]string{"action": "stop"}
+		request := map[string]interface{}{"action": "stop"}
 
 		for key, value := range validArgs {
-			switch key {
-			case service.PID:
-				fmt.Println("PID argument exists for stop: ", value)
-				request["pid"] = value
-			case service.ID:
-				fmt.Println("ID argument exists for stop: ", value)
-				request["id"] = value
-			}
+			fmt.Println("Argument exists: ", key)
+			request[string(key)] = value
 		}
 		sendRequest(request)
 	case "status":
 		validArgs := service.CheckArguments(args)
-		request := map[string]string{"action": "status"}
+		request := map[string]interface{}{"action": "status"}
 
 		for key, value := range validArgs {
 			switch key {
@@ -114,10 +88,24 @@ func main() {
 		}
 		sendRequest(request)
 	case "help":
-		fmt.Println("Usage: <action> <param paramValue...>")
-		fmt.Println("Example: start -n uniqueName -b /usr/bin/firefox")
-		fmt.Println("Example: start -a firefox")
-		fmt.Println("Exaple: stop -p 123150")
+		fmt.Print(`Usage: <action> <param paramValue...>
+
+Action: start
+start -e DISPLAY:=0 -b /usr/bin/chromium
+start -e DISPLAY:=0 -i uniqueName -b /usr/bin/firefox
+start -e DISPLAY:=0 -a firefox
+
+Action: stop
+stop -p 123150
+stop -i uniqueName
+
+Action: status
+status -p 321312
+status -i uniqueName
+
+Autostart and aliases "-a", "--alias"
+are found "config.toml"
+`)
 		os.Exit(0)
 	}
 }
