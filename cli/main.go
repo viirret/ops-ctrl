@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 
 	"ops-ctrl/pkg/service"
 )
@@ -23,7 +24,7 @@ func sendRequest(request map[string]interface{}) {
 		log.Fatal("Failed to send request:", err)
 	}
 
-	var response map[string]string
+	var response map[string]interface{}
 	decoder := json.NewDecoder(conn)
 	err = decoder.Decode(&response)
 	if err != nil {
@@ -35,45 +36,44 @@ func sendRequest(request map[string]interface{}) {
 
 func main() {
 	first_argument := os.Args[1]
-	args := os.Args[2:]
+	argumentsAfterAction := os.Args[2:]
 
 	switch first_argument {
 	case "start":
 		request := map[string]interface{}{
-			"action": "start",
-			"id":     "",
-			"env":    "",
+			"action":           "start",
+			"id":               "",
+			"env":              []string{},
+			"program_argument": []string{},
 		}
 
-		counter := 0
-		validArgs := service.CheckArguments(args)
+		validArgs := service.CheckArguments(argumentsAfterAction)
 
 		for key, value := range validArgs {
-			fmt.Println("Argument exists: ", key, " value:", value)
-			request[string(key)] = value
-			counter += 2
-		}
+			if key.SupportsArrays() {
+				itemValues := strings.Split(value, ",")
 
-		// Start reading through arguments once "command", which is the program, is found.
-		for i, arg := range args[counter:] {
-			key := fmt.Sprintf("arg%d", i)
-			log.Println("KEY: ", key, "VALUE: ", arg)
-			request[key] = arg
+				for i, item := range itemValues {
+					fmt.Printf("%s [%d] %s\n", key, i, item)
+				}
+				request[string(key)] = itemValues
+				continue
+			}
+			request[string(key)] = value
 		}
 
 		sendRequest(request)
 
 	case "stop":
-		validArgs := service.CheckArguments(args)
+		validArgs := service.CheckArguments(argumentsAfterAction)
 		request := map[string]interface{}{"action": "stop"}
 
 		for key, value := range validArgs {
-			fmt.Println("Argument exists: ", key)
 			request[string(key)] = value
 		}
 		sendRequest(request)
 	case "status":
-		validArgs := service.CheckArguments(args)
+		validArgs := service.CheckArguments(argumentsAfterAction)
 		request := map[string]interface{}{"action": "status"}
 
 		for key, value := range validArgs {

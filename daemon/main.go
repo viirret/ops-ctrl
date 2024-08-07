@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"ops-ctrl/pkg/config"
@@ -17,89 +16,101 @@ import (
 
 var mgr = manager.NewManager()
 
-func verifyAction(err error, message string) map[string]string {
+func verifyAction(err error, message string) map[string]interface{} {
 	if err != nil {
-		return map[string]string{"status": "error", "message": err.Error()}
+		return map[string]interface{}{"status": "error", "message": err.Error()}
 	} else {
-		return map[string]string{"status": "success", "message": message}
+		return map[string]interface{}{"status": "success", "message": message}
 	}
+}
+
+func argumentArrayValue[T any](request map[string]interface{}, argumentType string) []T {
+	item, itemOk := request[argumentType].([]interface{})
+	itemValues := []T{}
+
+	if itemOk {
+		newItemValues := make([]T, len(item))
+
+		// Convert each interface{} to string
+		for index, value := range item {
+			if envStr, ok := value.(T); ok {
+				newItemValues[index] = envStr
+			} else {
+				log.Fatalln("Warning: Unexpected type in env slice: ", value)
+			}
+		}
+		itemValues = newItemValues
+
+		for i, e := range itemValues {
+			fmt.Printf("%s [%d]: %v\n", argumentType, i, e)
+		}
+		fmt.Println("")
+	}
+	return itemValues
+}
+
+func argumentValue[T any](request map[string]interface{}, argumentType string, defaultValue T) T {
+	item, itemOk := request[argumentType].(T)
+	itemString := defaultValue
+
+	if itemOk {
+		itemString = item
+	}
+	return itemString
 }
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	var request map[string]string
+	var request map[string]interface{}
 	decoder := json.NewDecoder(conn)
 	err := decoder.Decode(&request)
 	if err != nil {
-		log.Println("Failed to decode request:", err)
+		log.Fatalln("Failed to decode request:", err)
 		return
 	}
+	log.Println(request)
 
 	// The first argument, "start", "stop", etc.
-	action := request["action"]
+	action := request["action"].(string)
 
 	// Environment variables
-	rawEnv, envOk := request["env"]
-	if !envOk {
-		log.Println("Empty env")
-	}
-	envValues := strings.Split(rawEnv, ",")
+	envStrings := argumentArrayValue[string](request, "env")
 
-	fmt.Println("Command line environment variables")
-	for index, arg := range envValues {
-		fmt.Println("env" + strconv.Itoa(index) + " " + arg)
-	}
+	// Arguments for the program binary
+	argStrings := argumentArrayValue[string](request, "program_argument")
 
-	// Arguments to the program binary
-	arg0 := request["arg0"]
-	arg1 := request["arg1"]
-	args := []string{arg0, arg1}
-
-	// Print each argument using a loop
-	for index, arg := range args {
-		fmt.Printf("args[%d]: %s\n", index, arg)
-	}
-
-	workingDir := "/"
-	dir, dirExists := request["working_dir"]
-	if dirExists {
-		log.Println("Workingdir argument exists: ", dir)
-		workingDir = dir
-	} else {
-		log.Println("Running default working dir: ", workingDir)
-	}
-
-	var response map[string]string
+	workingDir := argumentValue(request, "working_dir", "/")
+	var response = make(map[string]interface{})
 
 	switch action {
 	case "start":
-		id := request["id"]
-		if id == "" {
-			request["id"] = mgr.RandomID(10)
-			id = request["id"]
+		id := argumentValue(request, "id", mgr.RandomID(10))
+
+		binary := argumentValue(request, "binary", "")
+		if binary != "" {
+			mgr.AddService(id, binary, argStrings, envStrings, workingDir)
 		}
 
-		binary, binaryExists := request["binary"]
-
-		if binaryExists {
-			log.Println("Binary argument exists!")
-			mgr.AddService(id, binary, args, envValues, workingDir)
-		}
-
-		alias, aliasExists := request["alias"]
+		alias, aliasExists := request["alias"].(string)
 
 		if aliasExists {
 			cfg := config.GetConfig()
 
 			if familiarAlias, familiarAliasesExist := cfg.Aliases[alias]; familiarAliasesExist {
 				log.Println("Found defined alias:->", familiarAlias)
-				mgr.AddService(id, alias, args, envValues, workingDir)
+				mgr.AddService(id, alias, argStrings, envStrings, workingDir)
 			} else {
 				log.Fatal("Aliases not found for:", alias)
 				return
 			}
 		}
+
+		if binary == "" && !aliasExists {
+			log.Fatal("Program binary undefined!")
+			return
+		}
+
 		// Start service
 		err := mgr.StartService(id)
 		pid := strconv.Itoa(mgr.GetPID(id))
@@ -107,7 +118,7 @@ func handleConnection(conn net.Conn) {
 
 	// Stop service
 	case "stop":
-		pid, pidExists := request["pid"]
+		pid, pidExists := request["pid"].(string)
 		if pidExists {
 			log.Println("PID argument exits: ", pid)
 			pidValue, pidErr := strconv.Atoi(pid)
@@ -120,7 +131,7 @@ func handleConnection(conn net.Conn) {
 			break
 		}
 
-		id, idExists := request["id"]
+		id, idExists := request["id"].(string)
 		if idExists {
 			log.Println("ID argument exists: ", id)
 			err := mgr.StopServiceWithID(id)
@@ -132,14 +143,14 @@ func handleConnection(conn net.Conn) {
 
 	// Check status of the service
 	case "status":
-		id, idExists := request["id"]
+		id, idExists := request["id"].(string)
 		if idExists {
 			log.Println("ID argument exists: ", id)
 			status := mgr.ServiceStatusByID(id)
-			response = map[string]string{"status": "success", "message": status}
+			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
-		pid, pidExists := request["pid"]
+		pid, pidExists := request["pid"].(string)
 		if pidExists {
 			log.Println("PID argument exists: ", pid)
 			pidValue, pidErr := strconv.Atoi(pid)
@@ -148,12 +159,12 @@ func handleConnection(conn net.Conn) {
 				return
 			}
 			status := mgr.ServiceStatusByPID(pidValue)
-			response = map[string]string{"status": "success", "message": status}
+			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
 		log.Fatal("No method for finding program found")
 	default:
-		response = map[string]string{"status": "error", "message": "Unknown action"}
+		response = map[string]interface{}{"status": "error", "message": "Unknown action"}
 	}
 
 	encoder := json.NewEncoder(conn)

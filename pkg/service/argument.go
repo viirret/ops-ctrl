@@ -5,18 +5,27 @@ import "fmt"
 type Argument string
 
 const (
-	Binary     Argument = "binary"
-	ID         Argument = "id"
-	Alias      Argument = "alias"
-	Env        Argument = "env"
-	PID        Argument = "pid"
-	WorkingDir Argument = "working_dir"
-	Other      Argument = "other"
+	Binary           Argument = "binary"
+	ID               Argument = "id"
+	Alias            Argument = "alias"
+	Envs             Argument = "env"
+	ProgramArguments Argument = "program_argument"
+	PID              Argument = "pid"
+	WorkingDir       Argument = "working_dir"
+	Other            Argument = "other"
 )
 
 func (m Argument) IsValid() bool {
 	switch m {
-	case Binary, ID, Alias, Env, PID, WorkingDir, Other:
+	case Binary, ID, Alias, Envs, ProgramArguments, PID, WorkingDir, Other:
+		return true
+	}
+	return false
+}
+
+func (m Argument) SupportsArrays() bool {
+	switch m {
+	case Envs, ProgramArguments:
 		return true
 	}
 	return false
@@ -49,7 +58,13 @@ func CheckArguments(args []string) map[Argument]string {
 		"-e":    true,
 		"--env": true,
 	}
-	handleArguments(args, validArgs, envValues, Env)
+	handleArguments(args, validArgs, envValues, Envs)
+
+	programArgValues := map[string]bool{
+		"-arg":  true,
+		"--arg": true,
+	}
+	handleArguments(args, validArgs, programArgValues, ProgramArguments)
 
 	pidValues := map[string]bool{
 		"-p":    true,
