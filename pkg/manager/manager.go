@@ -30,6 +30,7 @@ func NewManager() *Manager {
 	}
 }
 
+// Create a new identifier for a service
 func (m *Manager) RandomID(length int) string {
 	if length <= 0 {
 		return ""
@@ -112,7 +113,7 @@ func (m *Manager) ServiceStatusByID(id string) string {
 	defer m.mu.Unlock()
 	service, exists := m.services[id]
 	if !exists {
-		return "unknown"
+		return ""
 	}
 	return service.CheckStatus()
 }
@@ -126,7 +127,7 @@ func (m *Manager) ServiceStatusByPID(pid int) string {
 			return service.CheckStatus()
 		}
 	}
-	return "unknown"
+	return ""
 }
 
 func (m *Manager) GetPID(id string) int {
@@ -137,4 +138,16 @@ func (m *Manager) GetPID(id string) int {
 		return -1
 	}
 	return service.GetPID()
+}
+
+func (m *Manager) GetID(pid int) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, service := range m.services {
+		if service.GetPID() == pid {
+			return service.ID
+		}
+	}
+	return ""
 }

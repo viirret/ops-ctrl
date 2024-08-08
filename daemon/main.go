@@ -44,19 +44,21 @@ func argumentArrayValue[T any](request map[string]interface{}, argumentType stri
 		for i, e := range itemValues {
 			fmt.Printf("%s [%d]: %v\n", argumentType, i, e)
 		}
-		fmt.Println("")
 	}
 	return itemValues
 }
 
 func argumentValue[T any](request map[string]interface{}, argumentType string, defaultValue T) T {
-	item, itemOk := request[argumentType].(T)
-	itemString := defaultValue
-
-	if itemOk {
-		itemString = item
+	if item, itemOk := request[argumentType].(T); itemOk {
+		if str, isString := any(item).(string); isString && str == "" {
+			fmt.Printf("Found empty string for: %s, using default value\n", argumentType)
+			return defaultValue
+		}
+		fmt.Printf("Found argument for: %s\n", argumentType)
+		return item
 	}
-	return itemString
+	fmt.Printf("Using default value for: %s\n", argumentType)
+	return defaultValue
 }
 
 func handleConnection(conn net.Conn) {
@@ -122,12 +124,14 @@ func handleConnection(conn net.Conn) {
 		if pidExists {
 			log.Println("PID argument exits: ", pid)
 			pidValue, pidErr := strconv.Atoi(pid)
+
 			if pidErr != nil {
 				log.Println("Error with int conversion: ", pidErr)
 				return
 			}
 			err := mgr.StopServiceWithPID(pidValue)
-			response = verifyAction(err, "Service pid "+pid+" stopped")
+			message := "Service with PID:" + pid + "and ID:" + mgr.GetID(pidValue) + " stopped"
+			response = verifyAction(err, message)
 			break
 		}
 

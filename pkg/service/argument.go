@@ -1,7 +1,5 @@
 package service
 
-import "fmt"
-
 type Argument string
 
 const (
@@ -83,15 +81,6 @@ func CheckArguments(args []string) map[Argument]string {
 	handleArguments(args, validArgs, workingDirValues, WorkingDir)
 
 	return validArgs
-}
-
-// NewMode creates a Mode from a string, validating it against known modes
-func NewArgument(modeStr string) (Argument, error) {
-	mode := Argument(modeStr)
-	if !mode.IsValid() {
-		return "", fmt.Errorf("invalid mode: %s", modeStr)
-	}
-	return mode, nil
 }
 
 func checkArgument(args []string, targetValues map[string]bool, targetType Argument) map[Argument]string {

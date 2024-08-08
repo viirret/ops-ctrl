@@ -49,8 +49,8 @@ func (s *Service) Start() error {
 		return fmt.Errorf("failed to start service: %v", err)
 	}
 
-	s.Status = NewServiceStatus("running", fmt.Sprintf("started with PID %d", s.Process.cmd.Process.Pid))
-	log.Printf("Service started with PID %d", s.Process.cmd.Process.Pid)
+	s.Status = NewServiceStatus("running", fmt.Sprintf("started with PID:%d and ID:%s", s.Process.cmd.Process.Pid, s.ID))
+	fmt.Printf("Service started with PID %d and ID %s", s.Process.cmd.Process.Pid, s.ID)
 	return nil
 }
 
