@@ -100,7 +100,7 @@ func handleConnection(conn net.Conn) {
 			cfg := config.GetConfig()
 
 			if familiarAlias, familiarAliasesExist := cfg.Aliases[alias]; familiarAliasesExist {
-				log.Println("Found defined alias:->", familiarAlias)
+				fmt.Printf("Found defined alias:->%s", familiarAlias)
 				mgr.AddService(id, alias, argStrings, envStrings, workingDir)
 			} else {
 				log.Fatal("Aliases not found for:", alias)
@@ -126,7 +126,7 @@ func handleConnection(conn net.Conn) {
 			pidValue, pidErr := strconv.Atoi(pid)
 
 			if pidErr != nil {
-				log.Println("Error with int conversion: ", pidErr)
+				log.Fatal("Error with int conversion: ", pidErr)
 				return
 			}
 			err := mgr.StopServiceWithPID(pidValue)
@@ -149,7 +149,7 @@ func handleConnection(conn net.Conn) {
 	case "status":
 		id, idExists := request["id"].(string)
 		if idExists {
-			log.Println("ID argument exists: ", id)
+			fmt.Printf("ID argument exists: %s", id)
 			status := mgr.ServiceStatusByID(id)
 			response = map[string]interface{}{"status": "success", "message": status}
 			break
@@ -174,7 +174,7 @@ func handleConnection(conn net.Conn) {
 	encoder := json.NewEncoder(conn)
 	err = encoder.Encode(response)
 	if err != nil {
-		log.Println("Failed to encode response:", err)
+		log.Fatal("Failed to encode response: ", err)
 	}
 }
 
@@ -187,7 +187,7 @@ func main() {
 		log.Fatal("Failed to listen on socket:", err)
 	}
 	defer listener.Close()
-	log.Println("Service manager daemon started")
+	fmt.Print("Service manager daemon started")
 
 	mgr.RunAutostart()
 
@@ -195,7 +195,7 @@ func main() {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-signalChan
-		log.Println("Shutting down service manager daemon")
+		fmt.Print("Shutting down service manager daemon")
 		listener.Close()
 		os.Exit(0)
 	}()

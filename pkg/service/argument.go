@@ -3,19 +3,18 @@ package service
 type Argument string
 
 const (
-	Binary           Argument = "binary"
-	ID               Argument = "id"
-	Alias            Argument = "alias"
-	Envs             Argument = "env"
-	ProgramArguments Argument = "program_argument"
-	PID              Argument = "pid"
-	WorkingDir       Argument = "working_dir"
-	Other            Argument = "other"
+	Binary           Argument = "binary"           // Program binary path
+	ID               Argument = "id"               // Unique indentifier for the service
+	Alias            Argument = "alias"            // Alias for binary path, aliases found in config.toml
+	Envs             Argument = "env"              // Environment variables for the program binary
+	ProgramArguments Argument = "program_argument" // Arguments for the program binary
+	PID              Argument = "pid"              // PID number for the service
+	WorkingDir       Argument = "working_dir"      // Working directory for the program
 )
 
 func (m Argument) IsValid() bool {
 	switch m {
-	case Binary, ID, Alias, Envs, ProgramArguments, PID, WorkingDir, Other:
+	case Binary, ID, Alias, Envs, ProgramArguments, PID, WorkingDir:
 		return true
 	}
 	return false

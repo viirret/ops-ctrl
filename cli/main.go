@@ -31,7 +31,7 @@ func sendRequest(request map[string]interface{}) {
 		log.Fatal("Failed to decode response:", err)
 	}
 
-	fmt.Println("Response:", response["message"])
+	fmt.Printf("Response:%s\n", response["message"])
 }
 
 func main() {
@@ -91,20 +91,22 @@ func main() {
 		fmt.Print(`Usage: <action> <param paramValue...>
 
 Action: start
-start -e DISPLAY:=0 -b /usr/bin/chromium
-start -e DISPLAY:=0 -i uniqueName -b /usr/bin/firefox
-start -e DISPLAY:=0 -a firefox
+(Depends: -b or -a)
+start -b /usr/bin/chromium
+start -i uniqueName -b /usr/bin/firefox -arg google.com
+start -a firefox
 
 Action: stop
+(Depends: -p or -i)
 stop -p 123150
 stop -i uniqueName
 
 Action: status
+(Depends: -p or -i)
 status -p 321312
 status -i uniqueName
 
-Autostart and aliases "-a", "--alias"
-are found "config.toml"
+Autostart and aliases ("-a", "--alias") are found "config.toml"
 `)
 		os.Exit(0)
 	}
