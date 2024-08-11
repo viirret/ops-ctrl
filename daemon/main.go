@@ -116,21 +116,15 @@ func handleConnection(conn net.Conn) {
 		// Start service
 		err := mgr.StartService(id)
 		pid := strconv.Itoa(mgr.GetPID(id))
-		response = verifyAction(err, "Service "+id+" started with pid: "+pid)
+		response = verifyAction(err, "Service "+id+" started with pid: "+pid+"\n")
 
 	// Stop service
 	case "stop":
-		pid, pidExists := request["pid"].(string)
-		if pidExists {
-			log.Println("PID argument exits: ", pid)
-			pidValue, pidErr := strconv.Atoi(pid)
-
-			if pidErr != nil {
-				log.Fatal("Error with int conversion: ", pidErr)
-				return
-			}
-			err := mgr.StopServiceWithPID(pidValue)
-			message := "Service with PID:" + pid + "and ID:" + mgr.GetID(pidValue) + " stopped"
+		pidFloat, pidFloatExists := request["pid"].(float64)
+		if pidFloatExists {
+			intVal := int(pidFloat)
+			err := mgr.StopServiceWithPID(intVal)
+			message := "Service with PID:" + string(int(pidFloat)) + "and ID:" + mgr.GetID(intVal) + " stopped"
 			response = verifyAction(err, message)
 			break
 		}
@@ -154,15 +148,17 @@ func handleConnection(conn net.Conn) {
 			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
-		pid, pidExists := request["pid"].(string)
+		pid, pidExists := request["pid"].(int)
 		if pidExists {
 			log.Println("PID argument exists: ", pid)
-			pidValue, pidErr := strconv.Atoi(pid)
-			if pidErr != nil {
-				fmt.Println("Error with string to int conversion: ", pidErr)
-				return
-			}
-			status := mgr.ServiceStatusByPID(pidValue)
+			/*
+				pidValue, pidErr := strconv.Atoi(pid)
+				if pidErr != nil {
+					fmt.Println("Error with string to int conversion: ", pidErr)
+					return
+				}
+			*/
+			status := mgr.ServiceStatusByPID(pid)
 			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
@@ -187,7 +183,7 @@ func main() {
 		log.Fatal("Failed to listen on socket:", err)
 	}
 	defer listener.Close()
-	fmt.Print("Service manager daemon started")
+	fmt.Print("Service manager daemon started\n")
 
 	mgr.RunAutostart()
 

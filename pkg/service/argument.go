@@ -28,8 +28,41 @@ func (m Argument) SupportsArrays() bool {
 	return false
 }
 
-func CheckArguments(args []string) map[Argument]string {
-	validArgs := make(map[Argument]string)
+type Mergeable interface {
+	Merge(other interface{}) interface{}
+}
+
+// Base merge function that both Int and String will use
+func mergeValues[T any](a, b interface{}) interface{} {
+	valA, okA := a.(T)
+	valB, okB := b.(T)
+	if okA && okB {
+		switch x := any(valA).(type) {
+		case int:
+			return x + any(valB).(int)
+		case string:
+			return x + any(valB).(string)
+		}
+	}
+	return a
+}
+
+// Int type that implements Mergeable interface
+type mergeInt int
+
+func (a mergeInt) Merge(other interface{}) interface{} {
+	return mergeValues[mergeInt](a, other)
+}
+
+// String type that implements Mergeable interface
+type mergeString string
+
+func (s mergeString) Merge(other interface{}) interface{} {
+	return mergeValues[mergeString](s, other)
+}
+
+func CheckArguments(args []string) map[Argument]interface{} {
+	validArgs := make(map[Argument]interface{})
 
 	binaryValues := map[string]bool{
 		"-b":    true,
@@ -82,8 +115,8 @@ func CheckArguments(args []string) map[Argument]string {
 	return validArgs
 }
 
-func checkArgument(args []string, targetValues map[string]bool, targetType Argument) map[Argument]string {
-	validArgs := make(map[Argument]string)
+func checkArgument(args []string, targetValues map[string]bool, targetType Argument) map[Argument]interface{} {
+	validArgs := make(map[Argument]interface{})
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if targetValues[arg] {
@@ -93,13 +126,19 @@ func checkArgument(args []string, targetValues map[string]bool, targetType Argum
 	return validArgs
 }
 
-func mapAdd(original map[Argument]string, new map[Argument]string) {
+func addArguments(original map[Argument]interface{}, new map[Argument]interface{}) {
 	for key, value := range new {
-		original[key] += value
+		if originalVal, ok := original[key]; ok {
+			if mergeable, canMerge := originalVal.(Mergeable); canMerge {
+				original[key] = mergeable.Merge(value)
+			}
+		} else {
+			original[key] = value
+		}
 	}
 }
 
-func handleArguments(args []string, originalArguments map[Argument]string, values map[string]bool, argumentType Argument) {
+func handleArguments(args []string, originalArguments map[Argument]interface{}, values map[string]bool, argumentType Argument) {
 	newArguments := checkArgument(args, values, argumentType)
-	mapAdd(originalArguments, newArguments)
+	addArguments(originalArguments, newArguments)
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 
 	"ops-ctrl/pkg/service"
@@ -51,7 +52,7 @@ func main() {
 
 		for key, value := range validArgs {
 			if key.SupportsArrays() {
-				itemValues := strings.Split(value, ",")
+				itemValues := strings.Split(value.(string), ",")
 
 				for i, item := range itemValues {
 					fmt.Printf("%s [%d] %s\n", key, i, item)
@@ -66,10 +67,22 @@ func main() {
 
 	case "stop":
 		validArgs := service.CheckArguments(argumentsAfterAction)
-		request := map[string]interface{}{"action": "stop"}
+		request := map[string]interface{}{"action": "stop", "pid": 100}
 
 		for key, value := range validArgs {
-			request[string(key)] = value
+			if key == service.PID {
+				strValue, ok := value.(string)
+				if !ok {
+					fmt.Println("Value is not a string:", value)
+				} else if intValue, err := strconv.Atoi(strValue); err == nil {
+					fmt.Println("Added PID argument:", intValue)
+					request[string(key)] = intValue
+				} else {
+					fmt.Println("Int conversion failed:", value)
+				}
+			} else {
+				request[string(key)] = value
+			}
 		}
 		sendRequest(request)
 	case "status":
