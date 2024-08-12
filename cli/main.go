@@ -35,6 +35,34 @@ func sendRequest(request map[string]interface{}) {
 	fmt.Printf("Response:%s\n", response["message"])
 }
 
+func addArguments(arguments map[service.Argument]interface{}, request map[string]interface{}) {
+	for key, value := range arguments {
+		if key.SupportsArrays() {
+			// TODO add multiple arguments with other values than "string".
+			itemValues := strings.Split(value.(string), ",")
+			for i, item := range itemValues {
+				fmt.Printf("%s [%d] %s\n", key, i, item)
+			}
+			request[string(key)] = itemValues
+			continue
+		}
+
+		switch key {
+		case service.PID:
+			strValue, ok := value.(string)
+			if !ok {
+				fmt.Println("Value is not a string:", value)
+			} else if intValue, err := strconv.Atoi(strValue); err == nil {
+				request[string(key)] = intValue
+			} else {
+				fmt.Println("Int conversion failed:", value)
+			}
+		default:
+			request[string(key)] = value
+		}
+	}
+}
+
 func main() {
 	first_argument := os.Args[1]
 	argumentsAfterAction := os.Args[2:]
@@ -47,58 +75,21 @@ func main() {
 			"env":              []string{},
 			"program_argument": []string{},
 		}
-
 		validArgs := service.CheckArguments(argumentsAfterAction)
 
-		for key, value := range validArgs {
-			if key.SupportsArrays() {
-				itemValues := strings.Split(value.(string), ",")
-
-				for i, item := range itemValues {
-					fmt.Printf("%s [%d] %s\n", key, i, item)
-				}
-				request[string(key)] = itemValues
-				continue
-			}
-			request[string(key)] = value
-		}
-
+		addArguments(validArgs, request)
 		sendRequest(request)
-
 	case "stop":
 		validArgs := service.CheckArguments(argumentsAfterAction)
-		request := map[string]interface{}{"action": "stop", "pid": 100}
+		request := map[string]interface{}{"action": "stop"}
 
-		for key, value := range validArgs {
-			if key == service.PID {
-				strValue, ok := value.(string)
-				if !ok {
-					fmt.Println("Value is not a string:", value)
-				} else if intValue, err := strconv.Atoi(strValue); err == nil {
-					fmt.Println("Added PID argument:", intValue)
-					request[string(key)] = intValue
-				} else {
-					fmt.Println("Int conversion failed:", value)
-				}
-			} else {
-				request[string(key)] = value
-			}
-		}
+		addArguments(validArgs, request)
 		sendRequest(request)
 	case "status":
 		validArgs := service.CheckArguments(argumentsAfterAction)
 		request := map[string]interface{}{"action": "status"}
 
-		for key, value := range validArgs {
-			switch key {
-			case service.PID:
-				fmt.Println("PID argument exists for status: ", value)
-				request["pid"] = value
-			case service.ID:
-				fmt.Println("ID argument exists for status: ", value)
-				request["id"] = value
-			}
-		}
+		addArguments(validArgs, request)
 		sendRequest(request)
 	case "help":
 		fmt.Print(`Usage: <action> <param paramValue...>

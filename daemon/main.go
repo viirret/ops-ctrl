@@ -148,17 +148,9 @@ func handleConnection(conn net.Conn) {
 			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
-		pid, pidExists := request["pid"].(int)
+		pid, pidExists := request["pid"].(float64)
 		if pidExists {
-			log.Println("PID argument exists: ", pid)
-			/*
-				pidValue, pidErr := strconv.Atoi(pid)
-				if pidErr != nil {
-					fmt.Println("Error with string to int conversion: ", pidErr)
-					return
-				}
-			*/
-			status := mgr.ServiceStatusByPID(pid)
+			status := mgr.ServiceStatusByPID(int(pid))
 			response = map[string]interface{}{"status": "success", "message": status}
 			break
 		}
