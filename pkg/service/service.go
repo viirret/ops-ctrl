@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 )
@@ -63,7 +62,7 @@ func (s *Service) Stop() error {
 	}
 
 	s.Status = NewServiceStatus("stopped", "process terminated successfully")
-	log.Printf("Service " + pid + " stopped")
+	fmt.Printf("Service " + pid + " stopped")
 	return nil
 }
 

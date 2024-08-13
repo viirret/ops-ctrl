@@ -22,14 +22,14 @@ func sendRequest(request map[string]interface{}) {
 	encoder := json.NewEncoder(conn)
 	err = encoder.Encode(request)
 	if err != nil {
-		log.Fatal("Failed to send request:", err)
+		log.Fatalf("Failed to send request: %v", err)
 	}
 
 	var response map[string]interface{}
 	decoder := json.NewDecoder(conn)
 	err = decoder.Decode(&response)
 	if err != nil {
-		log.Fatal("Failed to decode response:", err)
+		log.Fatalf("Failed to decode response: %v", err)
 	}
 
 	fmt.Printf("Response:%s\n", response["message"])

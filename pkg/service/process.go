@@ -80,7 +80,7 @@ func (p *Process) Status() string {
 	defer p.mu.Unlock()
 
 	if p.cmd != nil && p.cmd.ProcessState != nil && p.cmd.ProcessState.Exited() {
-		return "stopped"
+		return "exited"
 	}
 
 	return "running"

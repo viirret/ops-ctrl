@@ -13,5 +13,7 @@ go run cli/main.go help
 
 # Plans
 - Get this program running as PID1 in dev environment
+- Add other signals and poweroff
 - Improve configuration possibilities
 - Systemd service file converter
+- Add tests

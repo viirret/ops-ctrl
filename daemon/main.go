@@ -36,7 +36,7 @@ func argumentArrayValue[T any](request map[string]interface{}, argumentType stri
 			if envStr, ok := value.(T); ok {
 				newItemValues[index] = envStr
 			} else {
-				log.Fatalln("Warning: Unexpected type in env slice: ", value)
+				log.Fatalf("Warning: Unexpected type in env slice: %s", value)
 			}
 		}
 		itemValues = newItemValues
@@ -71,7 +71,7 @@ func handleConnection(conn net.Conn) {
 		log.Fatalln("Failed to decode request:", err)
 		return
 	}
-	log.Println(request)
+	fmt.Println(request)
 
 	// The first argument, "start", "stop", etc.
 	action := request["action"].(string)
@@ -103,7 +103,7 @@ func handleConnection(conn net.Conn) {
 				fmt.Printf("Found defined alias:->%s", familiarAlias)
 				mgr.AddService(id, alias, argStrings, envStrings, workingDir)
 			} else {
-				log.Fatal("Aliases not found for:", alias)
+				log.Fatalln("Aliases not found for:", alias)
 				return
 			}
 		}
