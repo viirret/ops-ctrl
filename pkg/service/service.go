@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 )
@@ -53,9 +54,9 @@ func (s *Service) Start() error {
 	return nil
 }
 
-func (s *Service) Stop() error {
+func (s *Service) SignalProcess(signal os.Signal) error {
 	pid := strconv.Itoa(s.GetPID())
-	err := s.Process.Stop()
+	err := s.Process.SignalProcess(signal)
 	if err != nil {
 		s.Status = NewServiceStatus("error", fmt.Sprintf("Failed to stop: %v", err))
 		return err

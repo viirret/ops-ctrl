@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -79,9 +80,11 @@ func main() {
 
 		addArguments(validArgs, request)
 		sendRequest(request)
-	case "stop":
-		validArgs := service.CheckArguments(argumentsAfterAction)
-		request := map[string]interface{}{"action": "stop"}
+	case "signal":
+		// Reserve first argument to the signal type
+		signalString := argumentsAfterAction[0]
+		validArgs := service.CheckArguments(argumentsAfterAction[1:])
+		request := map[string]interface{}{"action": "signal", "signalType": signalString}
 
 		addArguments(validArgs, request)
 		sendRequest(request)
@@ -91,21 +94,27 @@ func main() {
 
 		addArguments(validArgs, request)
 		sendRequest(request)
+	case "poweroff":
+		err := exec.Command("poweroff").Run()
+		if err != nil {
+			fmt.Printf("Error powering off: %v\n", err)
+			return
+		}
 	case "help":
 		fmt.Print(`Usage: <action> <param paramValue...>
 
-Action: start
+Action: Start process
 (Depends: -b or -a)
 start -b /usr/bin/chromium
 start -i uniqueName -b /usr/bin/firefox -arg google.com
 start -a firefox
 
-Action: stop
-(Depends: -p or -i)
-stop -p 123150
-stop -i uniqueName
+Action: Send signal
+(Depends: signal and -p or -i)
+signal SIGTERM -p 123150
+signal SIGKILL -i uniqueName
 
-Action: status
+Action: Check process status
 (Depends: -p or -i)
 status -p 321312
 status -i uniqueName

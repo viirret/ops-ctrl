@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -86,23 +87,23 @@ func (m *Manager) StartService(id string) error {
 	return service.Start()
 }
 
-func (m *Manager) StopServiceWithID(id string) error {
+func (m *Manager) SignalServiceWithID(id string, signal os.Signal) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	service, exists := m.services[id]
 	if !exists {
 		return nil
 	}
-	return service.Stop()
+	return service.SignalProcess(signal)
 }
 
-func (m *Manager) StopServiceWithPID(pid int) error {
+func (m *Manager) SignalServiceWithPID(pid int, signal os.Signal) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for _, service := range m.services {
 		if service.GetPID() == pid {
-			service.Stop()
+			service.SignalProcess(signal)
 		}
 	}
 	return nil

@@ -12,6 +12,7 @@ import (
 
 	"ops-ctrl/pkg/config"
 	"ops-ctrl/pkg/manager"
+	"ops-ctrl/pkg/service"
 )
 
 var mgr = manager.NewManager()
@@ -119,11 +120,23 @@ func handleConnection(conn net.Conn) {
 		response = verifyAction(err, "Service "+id+" started with pid: "+pid+"\n")
 
 	// Stop service
-	case "stop":
+	case "signal":
+		signalType := argumentValue(request, "signalType", "")
+		if signalType == "" {
+			log.Fatal("Missing signal type")
+			return
+		}
+
+		signal, err := service.GetSignal(signalType)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
 		pidFloat, pidFloatExists := request["pid"].(float64)
 		if pidFloatExists {
 			intVal := int(pidFloat)
-			err := mgr.StopServiceWithPID(intVal)
+			err := mgr.SignalServiceWithPID(intVal, signal)
 			message := "Service with PID:" + string(int(pidFloat)) + "and ID:" + mgr.GetID(intVal) + " stopped"
 			response = verifyAction(err, message)
 			break
@@ -132,7 +145,7 @@ func handleConnection(conn net.Conn) {
 		id, idExists := request["id"].(string)
 		if idExists {
 			log.Println("ID argument exists: ", id)
-			err := mgr.StopServiceWithID(id)
+			err := mgr.SignalServiceWithID(id, signal)
 			response = verifyAction(err, "Service "+id+" stopped")
 			break
 		}

@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -52,7 +53,7 @@ func (p *Process) Start() error {
 }
 
 // Stop terminates the process
-func (p *Process) Stop() error {
+func (p *Process) SignalProcess(signal os.Signal) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -60,15 +61,21 @@ func (p *Process) Stop() error {
 		return fmt.Errorf("process not running")
 	}
 
-	err := p.cmd.Process.Signal(syscall.SIGTERM)
+	err := p.cmd.Process.Signal(signal)
 	if err != nil {
 		return fmt.Errorf("failed to stop process: %v", err)
 	}
 
-	// Wait for process to exit
-	err = p.cmd.Wait()
-	if err != nil {
-		return fmt.Errorf("failed to wait for process termination: %v", err)
+	switch signal {
+	case syscall.SIGTERM, syscall.SIGKILL:
+		// Wait for process to exit
+		err = p.cmd.Wait()
+		if err != nil {
+			return fmt.Errorf("failed to wait for process termination: %v", err)
+		}
+	default:
+		// Handle other signals if needed
+		fmt.Printf("Process received signal: %v\n", signal)
 	}
 
 	return nil
